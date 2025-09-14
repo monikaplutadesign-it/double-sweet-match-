@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pancake Memo</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fce7f3; /* Light pink background */
+        }
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 100%;
+        }
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            font-size: 2.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-front {
+            color: black;
+            transform: rotateY(180deg);
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .card-back {
+            background-color: #ffc0cb; /* Pastel pink for the card back */
+            color: white;
+            flex-direction: column;
+        }
+        /* Pancake colors */
+        .bg-pancake-1 { background-color: #fef08a; } /* Yellow */
+        .bg-pancake-2 { background-color: #f9a8d4; } /* Pink */
+        .bg-pancake-3 { background-color: #c084fc; } /* Bronze */
+        .bg-pancake-4 { background-color: #fcd34d; } /* Amber */
+        .bg-pancake-5 { background-color: #e879f9; } /* Fuchsia */
+        .bg-pancake-6 { background-color: #a78bfa; } /* Violet */
+        .bg-pancake-7 { background-color: #fde047; } /* Yellow-Gold */
+        .bg-pancake-8 { background-color: #f472b6; } /* Pink-Red */
+
+        /* Sparkle effect styles */
+        .sparkle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 5;
+        }
+        .sparkle {
+            position: absolute;
+            background-color: transparent;
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0);
+            animation: sparkle-animation 1s forwards;
+        }
+        .sparkle::before {
+            content: '★';
+            font-size: 16px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        @keyframes sparkle-animation {
+            0% {
+                opacity: 0;
+                transform: scale(0);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+        }
+        /* Confetti animation */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 10;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: gold;
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0);
+            animation: confetti-fall 2s ease-out forwards;
+        }
+        .confetti::before {
+            content: '★';
+            font-size: 10px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+        }
+        @keyframes confetti-fall {
+            0% {
+                opacity: 1;
+                transform: translateY(-100vh) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) scale(0) rotate(720deg);
+            }
+        }
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 15;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-[#fce7f3] flex items-center justify-center min-h-screen">
+
+    <div class="container mx-auto p-4 max-w-lg">
+        <h1 class="text-4xl font-bold text-center mb-6 text-gray-800">Match pairs by item and card color</h1>
+
+        <div id="game-info" class="flex justify-around items-center mb-6 p-4 bg-white rounded-xl shadow-md">
+            <div class="text-center">
+                <p class="text-gray-600">Attempts</p>
+                <p id="moves" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="text-center">
+                <p class="text-gray-600">Matches</p>
+                <p id="matches" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+        </div>
+
+        <div id="game-board" class="grid grid-cols-4 gap-4 bg-[#f5f5f5] p-6 rounded-xl shadow-md">
+            <!-- Cards will be generated here by JavaScript -->
+        </div>
+
+        <div class="flex justify-center mt-6">
+            <button id="reset-button" class="bg-[#ff69b4] text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-[#ff1493] transition duration-300 transform hover:scale-105">Reset Game</button>
+        </div>
+
+        <!-- Win Modal -->
+        <div id="win-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">You won!</h2>
+                <p class="text-xl text-gray-600 mb-2">Your Score: <span id="final-score" class="font-bold"></span></p>
+                <button id="modal-play-again" class="bg-[#ff1493] text-white font-bold py-2 px-4 rounded-full mt-4 hover:bg-[#ff69b4] transition duration-300">Play Again</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameBoard = document.getElementById('game-board');
+            const movesDisplay = document.getElementById('moves');
+            const matchesDisplay = document.getElementById('matches');
+            const resetButton = document.getElementById('reset-button');
+            const winModal = document.getElementById('win-modal');
+            const finalScoreDisplay = document.getElementById('final-score');
+            const modalPlayAgainButton = document.getElementById('modal-play-again');
+
+            const sparkleColors = ['#f5f5dc', '#ffd700', '#c5b358'];
+
+            const pancakePairs = [
+                { color: 'yellow', topping: '🍓', style: 'pancake-1' },
+                { color: 'pink', topping: '🍫', style: 'pancake-2' },
+                { color: 'bronze', topping: '🍯', style: 'pancake-3' },
+                { color: 'yellow', topping: '🍫', style: 'pancake-4' },
+                { color: 'pink', topping: '🍯', style: 'pancake-5' },
+                { color: 'bronze', topping: '🍬', style: 'pancake-6' },
+                { color: 'yellow', topping: '🍬', style: 'pancake-7' },
+                { color: 'pink', topping: '🍓', style: 'pancake-8' },
+            ];
+            
+            const cards = [...pancakePairs, ...pancakePairs];
+
+            let hasFlippedCard = false;
+            let lockBoard = false;
+            let firstCard, secondCard;
+            let attempts = 0;
+            let matchesFound = 0;
+
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            function createCards() {
+                gameBoard.innerHTML = '';
+                shuffle(cards).forEach(card => {
+                    const cardElement = document.createElement('div');
+                    cardElement.classList.add('card', 'card-container', 'w-20', 'h-20', 'sm:w-24', 'sm:h-24', 'cursor-pointer', 'relative');
+                    cardElement.dataset.color = card.color;
+                    cardElement.dataset.topping = card.topping;
+                    cardElement.innerHTML = `
+                        <div class="card-inner rounded-xl shadow-md transition-transform duration-600 ease-in-out">
+                            <div class="card-face card-back">
+                                <span class="text-3xl font-bold">?</span>
+                            </div>
+                            <div class="card-face card-front text-5xl bg-${card.style}">
+                                ${card.topping}
+                            </div>
+                        </div>
+                    `;
+                    cardElement.addEventListener('click', flipCard);
+                    gameBoard.appendChild(cardElement);
+                });
+            }
+
+            function flipCard() {
+                if (lockBoard) return;
+                if (this === firstCard) return;
+
+                this.classList.add('flipped');
+
+                if (!hasFlippedCard) {
+                    hasFlippedCard = true;
+                    firstCard = this;
+                    return;
+                }
+
+                secondCard = this;
+                attempts++;
+                movesDisplay.textContent = attempts;
+                checkForMatch();
+            }
+
+            function checkForMatch() {
+                const isMatch = firstCard.dataset.color === secondCard.dataset.color &&
+                               firstCard.dataset.topping === secondCard.dataset.topping;
+
+                if (isMatch) {
+                    matchesFound++;
+                    matchesDisplay.textContent = matchesFound;
+                    addSparkleEffect(firstCard);
+                    addSparkleEffect(secondCard);
+                    disableCards();
+                } else {
+                    unflipCards();
+                }
+            }
+
+            function disableCards() {
+                firstCard.removeEventListener('click', flipCard);
+                secondCard.removeEventListener('click', flipCard);
+                
+                resetBoard();
+                if (matchesFound === cards.length / 2) {
+                    showWinMessage();
+                }
+            }
+
+            function unflipCards() {
+                lockBoard = true;
+                setTimeout(() => {
+                    firstCard.classList.remove('flipped');
+                    secondCard.classList.remove('flipped');
+                    resetBoard();
+                }, 1000);
+            }
+
+            function resetBoard() {
+                [hasFlippedCard, lockBoard] = [false, false];
+                [firstCard, secondCard] = [null, null];
+            }
+            
+            function showWinMessage() {
+                const score = calculateScore(attempts);
+                finalScoreDisplay.textContent = score;
+                winModal.classList.remove('hidden');
+                addConfettiEffect();
+            }
+
+            function calculateScore(attempts) {
+                const maxAttempts = cards.length * 2;
+                const score = Math.max(0, maxAttempts - attempts);
+                return score;
+            }
+
+            function addSparkleEffect(cardElement) {
+                const sparkleContainer = document.createElement('div');
+                sparkleContainer.classList.add('sparkle-container');
+                cardElement.appendChild(sparkleContainer);
+
+                for (let i = 0; i < 20; i++) {
+                    const sparkle = document.createElement('div');
+                    sparkle.classList.add('sparkle');
+                    sparkle.style.width = `${Math.random() * 8 + 2}px`;
+                    sparkle.style.height = sparkle.style.width;
+                    sparkle.style.top = `${Math.random() * 100}%`;
+                    sparkle.style.left = `${Math.random() * 100}%`;
+                    sparkle.style.animationDelay = `${Math.random() * 0.5}s`;
+                    sparkle.style.color = sparkleColors[Math.floor(Math.random() * sparkleColors.length)];
+                    sparkleContainer.appendChild(sparkle);
+                }
+
+                setTimeout(() => {
+                    sparkleContainer.remove();
+                }, 1000);
+            }
+            
+            function addConfettiEffect() {
+                const confettiContainer = document.createElement('div');
+                confettiContainer.classList.add('confetti-container');
+                document.body.appendChild(confettiContainer);
+
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.classList.add('confetti');
+                    confetti.style.left = `${Math.random() * 100}vw`;
+                    confetti.style.animationDuration = `${Math.random() * 2 + 1}s`;
+                    confetti.style.animationDelay = `${Math.random() * 0.5}s`;
+                    confettiContainer.appendChild(confetti);
+                }
+
+                setTimeout(() => {
+                    confettiContainer.remove();
+                }, 2000);
+            }
+
+
+            function resetGame() {
+                attempts = 0;
+                matchesFound = 0;
+                movesDisplay.textContent = attempts;
+                matchesDisplay.textContent = matchesFound;
+                resetBoard();
+                createCards();
+                winModal.classList.add('hidden');
+            }
+
+            resetButton.addEventListener('click', resetGame);
+            modalPlayAgainButton.addEventListener('click', resetGame);
+
+            resetGame();
+        });
+    </script>
+</body>
+</html>
