@@ -7,10 +7,16 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for the reload icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #fce7f3; /* Light pink background */
+            background: linear-gradient(135deg, #fce7f3 0%, #ffebcd 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .card-container {
             perspective: 1000px;
@@ -164,17 +170,55 @@
             text-align: center;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         }
+        .text-orange {
+            color: #f97316;
+        }
+        /* Responsive styles for game board */
+        @media (max-width: 640px) {
+            .card-face {
+                font-size: 1.5rem;
+            }
+            .card-front {
+                font-size: 0.75rem;
+            }
+            .grid-cols-4 {
+                gap: 0.5rem;
+            }
+            .w-20 {
+                width: 4rem;
+                height: 4rem;
+            }
+        }
+        /* New responsive adjustments */
+        .game-info-responsive {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .game-info-responsive > div {
+            flex: 1 1 50%;
+            text-align: center;
+            padding: 0.5rem;
+        }
+        .game-info-responsive p {
+            font-size: 1rem;
+        }
+        .game-info-responsive p:first-child {
+            font-size: 0.875rem;
+        }
     </style>
 </head>
-<body class="bg-[#fce7f3] flex items-center justify-center min-h-screen">
+<body>
 
     <div class="container mx-auto p-4 max-w-lg">
-        <h1 class="text-4xl font-bold text-center mb-6 text-gray-800">Match pairs by item and card color</h1>
+        <h1 class="text-xl sm:text-4xl font-bold text-center mb-6 text-gray-800">Match pairs by item and card color</h1>
 
-        <div id="game-info" class="flex justify-around items-center mb-6 p-4 bg-white rounded-xl shadow-md">
+        <div id="game-info" class="game-info-responsive mb-2 py-1 px-4 bg-white rounded-xl shadow-md relative">
             <div class="text-center">
-                <p class="text-gray-600">Attempts</p>
-                <p id="moves" class="text-2xl font-bold text-gray-800">0</p>
+                <p class="text-gray-600">Attempts left</p>
+                <p id="moves" class="text-2xl font-bold text-gray-800">25</p>
             </div>
             <div class="text-center">
                 <p class="text-gray-600">Matches</p>
@@ -187,7 +231,10 @@
         </div>
 
         <div class="flex justify-center mt-6">
-            <button id="reset-button" class="bg-[#ff69b4] text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-[#ff1493] transition duration-300 transform hover:scale-105">Reset Game</button>
+            <button id="reset-button" class="bg-[#ff69b4] text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-[#ff1493] transition duration-300 transform hover:scale-105 flex items-center space-x-2">
+                <i class="fas fa-redo-alt"></i>
+                <span>Start again</span>
+            </button>
         </div>
 
         <!-- Win Modal -->
@@ -198,7 +245,16 @@
                 <button id="modal-play-again" class="bg-[#ff1493] text-white font-bold py-2 px-4 rounded-full mt-4 hover:bg-[#ff69b4] transition duration-300">Play Again</button>
             </div>
         </div>
-
+        
+        <!-- Loss Modal -->
+        <div id="lose-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">You Lost!</h2>
+                <p class="text-xl text-gray-600 mb-2">Your attempts exceeded the limit.</p>
+                <button id="modal-play-again-lose" class="bg-[#ff1493] text-white font-bold py-2 px-4 rounded-full mt-4 hover:bg-[#ff69b4] transition duration-300">Play Again</button>
+            </div>
+        </div>
+        
     </div>
 
     <script>
@@ -208,19 +264,23 @@
             const matchesDisplay = document.getElementById('matches');
             const resetButton = document.getElementById('reset-button');
             const winModal = document.getElementById('win-modal');
+            const loseModal = document.getElementById('lose-modal');
             const finalScoreDisplay = document.getElementById('final-score');
             const modalPlayAgainButton = document.getElementById('modal-play-again');
+            const modalPlayAgainLoseButton = document.getElementById('modal-play-again-lose');
 
             const sparkleColors = ['#f5f5dc', '#ffd700', '#c5b358'];
+            const MAX_ATTEMPTS = 25;
+            const WARNING_ATTEMPTS_LEFT = 5;
 
             const pancakePairs = [
                 { color: 'yellow', topping: '🍓', style: 'pancake-1' },
                 { color: 'pink', topping: '🍫', style: 'pancake-2' },
-                { color: 'bronze', topping: '🍯', style: 'pancake-3' },
+                { color: 'bronze', topping: '🍪', style: 'pancake-3' },
                 { color: 'yellow', topping: '🍫', style: 'pancake-4' },
-                { color: 'pink', topping: '🍯', style: 'pancake-5' },
-                { color: 'bronze', topping: '🍬', style: 'pancake-6' },
-                { color: 'yellow', topping: '🍬', style: 'pancake-7' },
+                { color: 'pink', topping: '🍪', style: 'pancake-5' },
+                { color: 'bronze', topping: '🍭', style: 'pancake-6' },
+                { color: 'yellow', topping: '🍭', style: 'pancake-7' },
                 { color: 'pink', topping: '🍓', style: 'pancake-8' },
             ];
             
@@ -231,6 +291,17 @@
             let firstCard, secondCard;
             let attempts = 0;
             let matchesFound = 0;
+
+            function updateAttemptsDisplay() {
+                const attemptsLeft = MAX_ATTEMPTS - attempts;
+                movesDisplay.textContent = attemptsLeft;
+
+                if (attemptsLeft <= WARNING_ATTEMPTS_LEFT) {
+                    movesDisplay.classList.add('text-orange');
+                } else {
+                    movesDisplay.classList.remove('text-orange');
+                }
+            }
 
             function shuffle(array) {
                 for (let i = array.length - 1; i > 0; i--) {
@@ -244,7 +315,7 @@
                 gameBoard.innerHTML = '';
                 shuffle(cards).forEach(card => {
                     const cardElement = document.createElement('div');
-                    cardElement.classList.add('card', 'card-container', 'w-20', 'h-20', 'sm:w-24', 'sm:h-24', 'cursor-pointer', 'relative');
+                    cardElement.classList.add('card', 'card-container', 'w-16', 'h-16', 'sm:w-24', 'sm:h-24', 'cursor-pointer', 'relative');
                     cardElement.dataset.color = card.color;
                     cardElement.dataset.topping = card.topping;
                     cardElement.innerHTML = `
@@ -276,7 +347,13 @@
 
                 secondCard = this;
                 attempts++;
-                movesDisplay.textContent = attempts;
+                updateAttemptsDisplay();
+                
+                if (attempts >= MAX_ATTEMPTS) {
+                    showLoseMessage();
+                    return;
+                }
+
                 checkForMatch();
             }
 
@@ -324,6 +401,10 @@
                 finalScoreDisplay.textContent = score;
                 winModal.classList.remove('hidden');
                 addConfettiEffect();
+            }
+
+            function showLoseMessage() {
+                loseModal.classList.remove('hidden');
             }
 
             function calculateScore(attempts) {
@@ -377,15 +458,17 @@
             function resetGame() {
                 attempts = 0;
                 matchesFound = 0;
-                movesDisplay.textContent = attempts;
+                updateAttemptsDisplay();
                 matchesDisplay.textContent = matchesFound;
                 resetBoard();
                 createCards();
                 winModal.classList.add('hidden');
+                loseModal.classList.add('hidden');
             }
 
             resetButton.addEventListener('click', resetGame);
             modalPlayAgainButton.addEventListener('click', resetGame);
+            modalPlayAgainLoseButton.addEventListener('click', resetGame);
 
             resetGame();
         });
